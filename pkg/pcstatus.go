@@ -36,6 +36,12 @@ type PcStatus struct {
 	Uncached  int       `json:"uncached"`  // number of pages that are not cached
 	Percent   float64   `json:"percent"`   // percentage of pages cached
 	PPStat    []bool    `json:"status"`    // per-page status, true if cached, false otherwise
+	// additional fields for cachestat implementation
+	CachedOnly      uint64 `json:"ccached,omitempty"`          // number of pages that are cached but not dirty or writeback
+	Dirty           uint64 `json:"dirty,omitempty"`            // number of dirty pages
+	Writeback       uint64 `json:"writeback,omitempty"`        // number of pages under writeback
+	Evicted         uint64 `json:"evicted,omitempty"`          // number of evicted pages
+	RecentlyEvicted uint64 `json:"recently_evicted,omitempty"` // number of recently evicted pages
 }
 
 func GetPcStatus(fname string, useCachestat bool) (PcStatus, error) {
@@ -66,12 +72,20 @@ func GetPcStatus(fname string, useCachestat bool) (PcStatus, error) {
 
 	if useCachestat {
 		// Use cachestat implementation
-		var cached, psize int
-		cached, psize, err = FileCachestat(f, fi.Size())
+		cstat, psize, err := FileCachestat(f, fi.Size())
 		if err != nil {
 			return pcs, err
 		}
-		pcs.Cached = cached
+
+		// will be shown in json output only for now
+		pcs.CachedOnly = cstat.Cache
+		pcs.Dirty = cstat.Dirty
+		pcs.Writeback = cstat.Writeback
+		pcs.Evicted = cstat.Evicted
+		pcs.RecentlyEvicted = cstat.Recently_evicted
+
+		// default for backward compatibility with mincore impl
+		pcs.Cached = int(cstat.Cache + cstat.Dirty + cstat.Writeback)
 		pcs.Pages = psize
 	} else {
 
