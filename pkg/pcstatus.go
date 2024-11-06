@@ -85,7 +85,7 @@ func GetPcStatus(fname string, useCachestat bool) (PcStatus, error) {
 		pcs.RecentlyEvicted = cstat.Recently_evicted
 
 		// default for backward compatibility with mincore impl
-		pcs.Cached = int(cstat.Cache + cstat.Dirty + cstat.Writeback)
+		pcs.Cached = int(cstat.Cache)
 		pcs.Pages = psize
 	} else {
 
